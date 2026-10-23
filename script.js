@@ -15,28 +15,45 @@ siteNav.querySelectorAll("a").forEach((link) => {
 
 document.querySelector("#year").textContent = new Date().getFullYear();
 
-// Cstoney420 video shuffle. Includes the video and stream links supplied by the site owner.
-const videos = [
-  { id: "4-eGOst2cvY", type: "VIDEO" },
-  { id: "gpn8EE7qklU", type: "VIDEO" },
-  { id: "wlr1Omj3bD0", type: "STREAM / REPLAY" },
-  { id: "jbTCXLW5U4M", type: "STREAM / REPLAY" },
-  { id: "iUPwKi22m9o", type: "STREAM / REPLAY" }
-];
+const videoInput = document.querySelector("#youtube-id");
+const loadVideoButton = document.querySelector("#load-video");
 const player = document.querySelector("#youtube-player");
 const videoMessage = document.querySelector("#video-message");
-const randomVideoButton = document.querySelector("#random-video");
-let currentVideoId = "";
 
-function pickRandomVideo() {
-  if (!videos.length) return;
-  let choices = videos.filter((video) => video.id !== currentVideoId);
-  if (!choices.length) choices = videos;
-  const video = choices[Math.floor(Math.random() * choices.length)];
-  currentVideoId = video.id;
-  player.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(video.id)}`;
-  videoMessage.textContent = `Random pick loaded: ${video.type}. Press play in the player to watch.`;
+function getYouTubeId(value) {
+  const input = value.trim();
+  // Accept a bare video ID or common YouTube URL formats.
+  if (/^[a-zA-Z0-9_-]{11}$/.test(input)) return input;
+
+  try {
+    const url = new URL(input);
+    if (url.hostname === "youtu.be" || url.hostname.endsWith(".youtu.be")) {
+      return url.pathname.split("/").filter(Boolean)[0] || null;
+    }
+    if (url.hostname.includes("youtube.com")) {
+      if (url.pathname === "/watch") return url.searchParams.get("v");
+      const parts = url.pathname.split("/").filter(Boolean);
+      if (["embed", "shorts", "live"].includes(parts[0])) return parts[1] || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
-randomVideoButton.addEventListener("click", pickRandomVideo);
-pickRandomVideo();
+loadVideoButton.addEventListener("click", () => {
+  const id = getYouTubeId(videoInput.value);
+  if (!id || !/^[a-zA-Z0-9_-]{11}$/.test(id)) {
+    videoMessage.textContent = "That doesn't look like a valid YouTube video ID or URL. Try a full YouTube link or its 11-character ID.";
+    videoMessage.classList.add("error");
+    return;
+  }
+
+  player.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+  videoMessage.textContent = "Video loaded. If it doesn't play, the owner may have disabled embedding.";
+  videoMessage.classList.remove("error");
+});
+
+videoInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") loadVideoButton.click();
+});
